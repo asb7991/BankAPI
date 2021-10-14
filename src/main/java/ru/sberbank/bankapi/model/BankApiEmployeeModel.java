@@ -31,6 +31,7 @@ public class BankApiEmployeeModel {
     }
 
     public static Map<String, String> addNewAccount(String clientId) throws SQLException {
+        // номер счета состоит из банковсого номера, проверочной цифры(K) и уникального номера
         final String bankNumber = "40817810K9991";
         Map<String, String> response = new HashMap<>();
         Statement statement = DataBaseConnection.getInstance().getConnection().createStatement();
@@ -57,6 +58,8 @@ public class BankApiEmployeeModel {
                 return response;
             }
         }
+
+        // для вычисления контрольной цифры к номеру счета приписывается условный номер РКЦ или кредитной организации (045)
         int controlNumber = ValidationAlgorithms.getControlNumberForAccountNumber("045" + bankNumber
                 + String.format("%07d",partOfNumberOfNewAccount));
         String newNumber = bankNumber.replace("K", String.valueOf(controlNumber)) + String.format("%07d",partOfNumberOfNewAccount);
@@ -121,7 +124,7 @@ public class BankApiEmployeeModel {
                 query = "UPDATE operation SET status = 'DENIED' WHERE id = " + operationId;
                 statement.execute(query);
             } else {
-                //вызов метода для перевода на счет другого банка
+                // вызов метода для перевода на счет другого банка
                 return "OK";
             }
 

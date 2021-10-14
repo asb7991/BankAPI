@@ -32,6 +32,7 @@ class BankApiApplicationTests {
 
     @BeforeEach
     void beforeMethod() throws Exception {
+        // очистка базы перед каждым тестом
         DataBaseConnection.getInstance().firstInit();
     }
 
@@ -45,6 +46,7 @@ class BankApiApplicationTests {
         listOfPayTypes.add("mir");
         List<Card> cardsToCheck = new ArrayList<>();
 
+        // создаем три вида карт
         for (String currentType : listOfPayTypes) {
             request.put("account_id", 1);
             request.put("type", currentType);
@@ -65,7 +67,7 @@ class BankApiApplicationTests {
             Assertions.assertEquals(3, response.getCard().getCvv().length(), "wrong cvv");
         }
 
-
+        // проверяем, что карты не появились у клиента до подтверждения банком
         request.clear();
         request.put("account_id", 1);
         GetCardsResponse expectedResponse = new GetCardsResponse("OK", new ArrayList<>());
@@ -73,6 +75,7 @@ class BankApiApplicationTests {
                         .content(mapper.writeValueAsString(request)))
                 .andDo(print()).andExpect(status().isOk()).andExpect(content().json(mapper.writeValueAsString(expectedResponse)));
 
+        // подтверждаем выпуск карт
         for (Card card : cardsToCheck) {
             request.clear();
             request.put("card_number", card.getNumber());
@@ -82,6 +85,7 @@ class BankApiApplicationTests {
                     .andDo(print()).andExpect(status().isOk()).andExpect(content().json(mapper.writeValueAsString(expectedStatusResponse)));
         }
 
+        // проверяем, что карты появились у клиента
         request.clear();
         request.put("account_id", 1);
         expectedResponse = new GetCardsResponse("OK", cardsToCheck);
@@ -97,7 +101,6 @@ class BankApiApplicationTests {
         request.put("account_id", 2);
         request.put("type", "mir");
         request.put("pin", "0000");
-
         NewCardResponse expectedResponse = new NewCardResponse("FAIL. ACCOUNT NOT FOUND", null);
 
         this.mockMvc.perform(post("/client/create-new-card").contentType(MediaType.APPLICATION_JSON)
@@ -119,6 +122,8 @@ class BankApiApplicationTests {
     @Test
     public void putAndCheckBalanceTest() throws Exception {
         ObjectMapper mapper = new ObjectMapper();
+
+        // проверяем, что у только что созданного клиента нулевой баланс
         Map<String, Object> request = new HashMap<>();
         request.put("account_id", 1);
         CheckBalanceResponse expectedResponseCheckBalance = new CheckBalanceResponse("OK", "0.0");
@@ -126,6 +131,7 @@ class BankApiApplicationTests {
                         .content(mapper.writeValueAsString(request)))
                 .andDo(print()).andExpect(status().isOk()).andExpect(content().json(mapper.writeValueAsString(expectedResponseCheckBalance)));
 
+        // пополняем баланс клиента
         request.clear();
         request.put("account_id", 1);
         request.put("sum", 458.5);
@@ -134,6 +140,7 @@ class BankApiApplicationTests {
                         .content(mapper.writeValueAsString(request)))
                 .andDo(print()).andExpect(status().isOk()).andExpect(content().json(mapper.writeValueAsString(expectedStatusResponse)));
 
+        // проверяем, что деньги не зачислены до подтверждения банком
         request.clear();
         request.put("account_id", 1);
         expectedResponseCheckBalance = new CheckBalanceResponse("OK", "0.0");
@@ -141,6 +148,7 @@ class BankApiApplicationTests {
                         .content(mapper.writeValueAsString(request)))
                 .andDo(print()).andExpect(status().isOk()).andExpect(content().json(mapper.writeValueAsString(expectedResponseCheckBalance)));
 
+        // подтверждаем операцию
         request.clear();
         request.put("operation_id", 1);
         expectedStatusResponse = new StatusResponse("OK");
@@ -148,6 +156,7 @@ class BankApiApplicationTests {
                         .content(mapper.writeValueAsString(request)))
                 .andDo(print()).andExpect(status().isOk()).andExpect(content().json(mapper.writeValueAsString(expectedStatusResponse)));
 
+        // проверяем баланс после подтверждения
         request.clear();
         request.put("account_id", 1);
         expectedResponseCheckBalance = new CheckBalanceResponse("OK", "458.5");
@@ -184,11 +193,13 @@ class BankApiApplicationTests {
         request.put("last_name", "Свиридов");
         request.put("passport", "9999999999");
 
+        // добавляем нового клиента
         StatusResponse expectedStatusResponse = new StatusResponse("OK");
         this.mockMvc.perform(post("/employee/add-new-client").contentType(MediaType.APPLICATION_JSON)
                         .content(mapper.writeValueAsString(request)))
                 .andDo(print()).andExpect(status().isOk()).andExpect(content().json(mapper.writeValueAsString(expectedStatusResponse)));
 
+        // пытаемся еще раз добавить этого же клиента еще раз
         expectedStatusResponse = new StatusResponse("FAIL. CLIENT ALREADY EXIST");
         this.mockMvc.perform(post("/employee/add-new-client").contentType(MediaType.APPLICATION_JSON)
                         .content(mapper.writeValueAsString(request)))
@@ -196,12 +207,13 @@ class BankApiApplicationTests {
     }
 
     @Test
-    public void addNewAccountAndAddNewAccountNonExistentClient() throws Exception{
+    public void addNewAccountAndAddNewAccountNonExistentClient() throws Exception {
         ObjectMapper mapper = new ObjectMapper();
         Map<String, Object> request = new HashMap<>();
         request.put("client_id", 1);
 
-       MvcResult result = this.mockMvc.perform(post("/employee/add-new-account").contentType(MediaType.APPLICATION_JSON)
+        // открываем новый счет
+        MvcResult result = this.mockMvc.perform(post("/employee/add-new-account").contentType(MediaType.APPLICATION_JSON)
                         .content(mapper.writeValueAsString(request)))
                 .andDo(print()).andExpect(status().isOk()).andReturn();
         StringReader reader = new StringReader(result.getResponse().getContentAsString());
@@ -210,6 +222,7 @@ class BankApiApplicationTests {
         Assertions.assertTrue(ValidationAlgorithms.checkValidityAccountNumber("713" + response.getAccountNumber()),
                 "wrong account number");
 
+        // пытаемся открыть новый счет у несуществующего клиента
         request.clear();
         request.put("client_id", 2);
         AddNewAccountResponse expectedResponse = new AddNewAccountResponse("FAIL. CLIENT NOT FOUND", null);

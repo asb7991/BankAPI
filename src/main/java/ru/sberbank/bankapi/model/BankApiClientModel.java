@@ -13,6 +13,7 @@ import java.util.*;
 
 public class BankApiClientModel {
     public static Map<String, Object> createNewCard(String accountId, String type, String pin) throws SQLException {
+        // номер карты состоит из цифры, обозначающей платежную систему, БИН, уникального номера и проверочной цифры
         final String bin = "12345";
         Map<String, Object> response = new HashMap<>();
         Statement statement = DataBaseConnection.getInstance().getConnection().createStatement();
@@ -24,6 +25,7 @@ public class BankApiClientModel {
             return response;
         }
 
+        // получаем все карты и пытаемся создать уникальную
         query = "SELECT number FROM card";
         resultSet = statement.executeQuery(query);
         List<Integer> partOfNumbersOfCard = new ArrayList<>();
@@ -52,6 +54,8 @@ public class BankApiClientModel {
                 payNumber = "2";
                 break;
         }
+
+        //вычисляем проверочную цифру с помощью алгоритма Луна
         StringBuilder number = new StringBuilder(payNumber + bin + String.format("%09d", partOfNumberOfNewCard));
         number.append(ValidationAlgorithms.getControlNumberForCardByLuhnAlgorithm(number.toString()));
 
